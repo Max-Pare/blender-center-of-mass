@@ -1,0 +1,23 @@
+schema_version = "1.0.0"
+
+id = "center_of_mass_viz"
+version = "1.0.0"
+name = "Center of Mass Visualizer"
+tagline = "Live center of mass, mass and tip-over stability of meshes"
+maintainer = "Massimo Parenti"
+type = "add-on"
+
+tags = ["3D View", "Mesh", "Physics"]
+
+blender_version_min = "4.2.0"
+
+license = ["SPDX:GPL-3.0-or-later"]
+
+[build]
+paths_exclude_pattern = [
+  "__pycache__/",
+  "/.git/",
+  "/.gitignore",
+  "/tests/",
+  "*.zip",
+]
