@@ -14,6 +14,8 @@ AXIS_COLORS = ((1.0, 0.21, 0.33, 1.0), (0.54, 0.86, 0.0, 1.0), (0.17, 0.56, 1.0,
 STABLE_COLOR = (0.35, 0.9, 0.45, 0.9)
 UNSTABLE_COLOR = (1.0, 0.3, 0.25, 0.9)
 NEUTRAL_COLOR = (1.0, 0.8, 0.2, 0.9)
+PIVOT_COLOR = (1.0, 0.3, 0.85, 1.0)  # magenta: clear of selection orange, axes and status colors
+LEVER_COLOR = (1.0, 0.3, 0.85, 0.6)
 DARK = (0.05, 0.05, 0.05, 1.0)
 LIGHT = (0.95, 0.95, 0.95, 1.0)
 
@@ -111,6 +113,32 @@ def draw_view(get_state):
             tick = 5.0 * ui_scale * (_world_per_pixel(region, rv3d, foot) or wpp)
             dx, dy = Vector((tick, 0.0, 0.0)), Vector((0.0, tick, 0.0))
             _lines(region, [foot - dx, foot + dx, foot - dy, foot + dy], color, 2.0 * ui_scale)
+
+            if res.pivot_edge is not None:
+                _draw_tip(region, rv3d, res, com, foot, ui_scale)
+
+
+def _draw_tip(region, rv3d, res, com, foot, ui_scale):
+    """Weak side: the edge it topples over, the lever triangle that sets the angle, a fall arrow."""
+    z = res.ground_z
+    a, b = (Vector((x, y, z)) for x, y in res.pivot_edge)
+    pivot = Vector((*res.pivot_point, z))
+    out = Vector((*res.tip_direction, 0.0))
+    side = Vector((-out.y, out.x, 0.0))
+
+    _lines(region, [a, b], PIVOT_COLOR, 4.0 * ui_scale)
+    # foot -> pivot is the margin d, pivot -> CoM leans at the tip angle from vertical.
+    _lines(region, [foot, pivot, pivot, com], LEVER_COLOR, 1.5 * ui_scale)
+
+    wpp = _world_per_pixel(region, rv3d, pivot)
+    if wpp is None:
+        return
+    length = 60.0 * ui_scale * wpp
+    head = 15.0 * ui_scale * wpp
+    tip = pivot + out * length
+    neck = tip - out * head
+    _lines(region, [pivot, neck], PIVOT_COLOR, 2.5 * ui_scale)
+    _tris([tip, neck + side * head * 0.55, neck - side * head * 0.55], [(0, 1, 2)], PIVOT_COLOR)
 
 
 def _com_symbol(cx, cy, radius, ui_scale, segments=10):

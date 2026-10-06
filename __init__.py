@@ -135,6 +135,19 @@ def _fmt_length(scene, value):
     return _fmt(scene, "LENGTH", value * _unit_scale(scene))
 
 
+def _direction_text(direction):
+    """World XY direction as the nearest axis plus an offset, e.g. '-Y, 10° toward +X'."""
+    names = ("+X", "+Y", "-X", "-Y")  # counter-clockwise from +X
+    angle = math.degrees(math.atan2(direction[1], direction[0]))
+    quarter = round(angle / 90.0)
+    offset = angle - quarter * 90.0
+    axis = names[quarter % 4]
+    if abs(offset) < 0.5:
+        return axis
+    toward = names[(quarter + (1 if offset > 0 else -1)) % 4]
+    return f"{axis}, {abs(offset):.0f}° toward {toward}"
+
+
 def _label(res, settings, scene):
     mass = _mass_kg(res, settings, scene)
     lines = ["CoM  " + _fmt(scene, "MASS", mass) if mass is not None else "CoM"]
@@ -301,7 +314,8 @@ class COMVIZ_Settings(PropertyGroup):
     show_stability: BoolProperty(
         name="Stability",
         description="Draw the plumb line and the footprint the object stands on, "
-                    "green when it stands, red when it topples (gravity along -Z)",
+                    "green when it stands, red when it topples (gravity along -Z). "
+                    "The magenta edge and arrow mark the side it tips over",
         default=True,
         update=_display_changed,
     )
@@ -536,9 +550,11 @@ class COMVIZ_PT_stability(Panel):
                 if res.tip_angle is not None:
                     _value_row(col, "Tips at", f"{math.degrees(res.tip_angle):.1f}° tilt")
                 _value_row(col, "Margin", _fmt_length(scene, res.support_margin))
+                _value_row(col, "Weak Side", _direction_text(res.tip_direction))
             else:
                 col.label(text="Topples: CoM outside footprint", icon="ERROR")
                 _value_row(col, "Overhang", _fmt_length(scene, -res.support_margin))
+                _value_row(col, "Falls Toward", _direction_text(res.tip_direction))
             _value_row(col, "CoM Height", _fmt_length(scene, res.com.z - res.ground_z))
 
         layout.prop(settings, "contact_band")

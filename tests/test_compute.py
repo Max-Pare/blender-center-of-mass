@@ -150,10 +150,27 @@ ob = mesh_object("Leaning", verts, faces)
 r = run(ob)
 check("leaning com", close(r.com, (2.0, 0.5, 2.0)), tuple(r.com))
 check("leaning topples", r.support_margin is not None and abs(r.support_margin + 1.0) < 1e-9, r.support_margin)
+check("leaning falls toward +X", close((*r.tip_direction, 0), (1, 0, 0)), r.tip_direction)
+check("leaning pivot edge at x = 1", all(abs(pt[0] - 1.0) < 1e-9 for pt in r.pivot_edge), r.pivot_edge)
+check("leaning pivot point", close((*r.pivot_point, 0), (1.0, 0.5, 0)), r.pivot_point)
+check("direction text +X", addon._direction_text(r.tip_direction) == "+X", addon._direction_text(r.tip_direction))
+check("direction text offset", addon._direction_text((math.cos(math.radians(-80)), math.sin(math.radians(-80))))
+      == "-Y, 10° toward +X")
+check("direction text wrap", addon._direction_text((math.cos(math.radians(181)), math.sin(math.radians(181))))
+      == "-X, 1° toward -Y")
 
 # 9. Vertex average is just that.
 r = run(ob, "VERTICES")
 check("vertex mean", close(r.com, (2.0, 0.5, 2.0)), tuple(r.com))
+
+# Stands, but leans toward -Y: wide in X so the weak side is unambiguous.
+clear_scene()
+verts = [(0, 0, 0), (4, 0, 0), (4, 2, 0), (0, 2, 0), (0, -0.6, 3), (4, -0.6, 3), (4, 1.4, 3), (0, 1.4, 3)]
+ob = mesh_object("LeanY", verts, faces)
+r = run(ob)
+check("lean -Y stands", r.support_margin is not None and abs(r.support_margin - 0.7) < 1e-6, r.support_margin)
+check("lean -Y weak side", close((*r.tip_direction, 0), (0, -1, 0)), r.tip_direction)
+check("lean -Y tip angle", abs(r.tip_angle - math.atan2(0.7, 1.5)) < 1e-6, math.degrees(r.tip_angle))
 
 # 10. Irregular closed mesh against Blender's own Origin to Center of Mass (Volume).
 clear_scene()

@@ -32,6 +32,9 @@ class MassResult:
     footprint: list = field(default_factory=list)  # convex hull of the contact patch, [(x, y)], CCW
     support_margin: float | None = None  # distance from CoM to footprint edge; < 0 means outside
     tip_angle: float | None = None       # radians of tilt before it topples
+    pivot_edge: tuple | None = None      # ((x, y), (x, y)) footprint edge it topples over
+    pivot_point: tuple | None = None     # (x, y) point of that edge nearest the plumb foot
+    tip_direction: tuple | None = None   # (x, y) unit vector, the way it falls
     stale: bool = False
     error: str = ""
 
@@ -65,6 +68,10 @@ def _has_inconsistent_winding(tris, n_verts):
     return np.unique(directed).size != directed.size
 
 
+def _xy(v):
+    return float(v[0]), float(v[1])
+
+
 def _stability(res, pts, contact_band):
     z = pts[:, 2]
     zmin = float(z.min())
@@ -74,7 +81,7 @@ def _stability(res, pts, contact_band):
     base = pts[z <= zmin + height * contact_band, :2]
     base = np.unique(base, axis=0)
     hull = base[convex_hull_2d(base.tolist())] if len(base) > 2 else base
-    res.footprint = [tuple(p) for p in hull]
+    res.footprint = [_xy(p) for p in hull]
     if len(hull) < 3:
         return  # point or edge contact: no support area, balance is unstable
 
@@ -86,7 +93,13 @@ def _stability(res, pts, contact_band):
     outward = np.stack((e[:, 1], -e[:, 0]), axis=1) / length[:, None]  # right side of a CCW edge
     c2 = np.array(res.com[:2])
     signed = ((c2 - p) * outward).sum(axis=1)  # > 0 outside that edge
-    res.support_margin = float(-signed.max())
+    # The edge the plumb foot is closest to (or furthest beyond) is the weak side.
+    i = int(signed.argmax())
+    res.support_margin = float(-signed[i])
+    res.pivot_edge = (_xy(p[i]), _xy(p[i] + e[i]))
+    t = float(np.clip(np.dot(c2 - p[i], e[i]) / length[i] ** 2, 0.0, 1.0))
+    res.pivot_point = _xy(p[i] + t * e[i])
+    res.tip_direction = _xy(outward[i])
 
     com_height = res.com.z - zmin
     if com_height > 0.0:
